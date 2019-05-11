@@ -38,6 +38,7 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
     and seamlessly update tokens via requests_oauth2lib.
     """
     token_url = 'https://api.login.yahoo.com/oauth2/get_token'
+    base_url = 'https://fantasysports.yahooapis.com/v2/'
 
     def __init__(self):
         # Load auth config into class
@@ -81,7 +82,7 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
         :return:
         """
         self.logger.info('Auth code has expired... generating link to renew')
-        url = 'https://api.login.yahoo.com/oauth2/request_auth?'\
+        url = 'https://api.login.yahoo.com/oauth2/request_auth?' \
               'client_id=%s&redirect_uri=oob&response_type=code' % self.auth_cfg['client_id']
         self.logger.info(url)
         webbrowser.open(url)
@@ -94,6 +95,38 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
         self.logger.info('Authfile updated. Renewing %s' % __class__.__name__)
 
 
+class YahooAPIClient(YahooAPIBase):
+
+    def __init__(self, base_url='https://fantasysports.yahooapis.com/fantasy/v2/'):
+        assert base_url.endswith('/')
+        assert base_url.startswith('https')
+        self.base_url = base_url
+        super(YahooAPIClient, self).__init__()
+
+    def send_get(self, uri):
+        url = self.base_url + uri
+        return self.__send_request(url, method='GET')
+
+    def send_post(self, uri, data={}):
+        url = self.base_url + uri
+        return self.__send_request(url, data=data, method='POST')
+
+    def __send_request(self, url, data=None, method=''):
+        # current Yahoo app is auth'd for readonly, though we may
+        # want to support POST going forward
+        if method == 'GET':
+            try:
+                r = self.request(url=url, method=method)
+                if not r.ok:
+                    r.raise_for_status()
+                return r
+            except Exception as e:
+                # TODO: catch specific exceptions and retry pending error type
+                self.logger.exception('Encountered %s on %s %s' % (e, url, method))
+        if method == 'POST':
+            raise NotImplementedError('POST is not supported!')
+
+
 class Resource(object):
     """
     Resource base class.
@@ -104,11 +137,27 @@ class Resource(object):
     """
     pass
 
+
 class League(Resource):
-    pass
+    @property
+    def settings(self):
+        pass
 
-class Matchup(Resource):
-    pass
+    @property
+    def standings(self):
+        pass
 
-class Manager(Resource):
-    pass
+    @property
+    def scoreboard(self):
+        pass
+
+
+class Teams(Resource):
+    @property
+    def roster(self):
+        pass
+
+    @property
+    def matchups(self):
+        pass
+
