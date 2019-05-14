@@ -48,5 +48,6 @@ MANIFEST
 # Per-project virtualenvs
 .venv*/
 
-# Auth files
+# Config files
 auth.json
+league.json
