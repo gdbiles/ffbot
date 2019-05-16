@@ -19,7 +19,7 @@ from oauthlib.common import urldecode
 
 
 logger = logging.getLogger(__name__)
-AUTHFILE = os.path.realpath('../auth.json')
+AUTHFILE = os.path.abspath(os.path.join(os.path.realpath(__file__), '..', '..', 'auth.json'))
 
 
 def load_auth(t=None):
