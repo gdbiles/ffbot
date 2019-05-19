@@ -49,5 +49,5 @@ MANIFEST
 .venv*/
 
 # Config files
-auth.json
-league.json
+*/auth.json
+*/league.json

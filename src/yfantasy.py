@@ -18,8 +18,17 @@ def xml_to_json(xmltext, api):
     :param api: fantasy Yresource api
     :return:
     """
-    convert = json.dumps(xmltodict.parse(xmltext))
-    return json.loads(convert)['fantasy_content'][api]
+    # need to dump and load in order to access as dict
+    api = api.lower()
+    convert = json.dumps(xmltodict.parse(xmltext), indent=4, separators=(',', ': '))
+    logging.info(convert)
+    content = json.loads(convert)['fantasy_content']
+    # sometimes info is nested in other content
+    # if we want something in a deeper level, provide a map to the resource
+    if nest_map:
+        for k in nest_map.split(','):
+            content = content.get(k, {})
+    return content.get(api, {})
 
 
 def get_yleague_json(path=LEAGUE_JSON_PATH):
