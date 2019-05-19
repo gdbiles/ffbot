@@ -1,5 +1,6 @@
 # Interface for Yahoo Fantasy
 
+import datetime
 import json
 import os
 import yclient
@@ -70,7 +71,7 @@ def create_yleague_json(league_id, update=False):
     league = get(raw_uri=league_uri, raw_data=True)
     # Get data for each team
     league['teams'] = []
-    for i in range(1, int(league['num_teams'])+1):
+    for i in range(1, int(league['num_teams']) + 1):
         team_uri = 'team/' + league['league_key'] + '.t.' + str(i)
         league['teams'].append(get(raw_uri=team_uri, raw_data=True))
     with open(LEAGUE_JSON_PATH, 'w') as f:
@@ -85,7 +86,7 @@ def get(**kwargs):
     :param kwargs: currently supports: <empty>, raw_uri, raw_data, api
     :return:
     """
-    league = YResource(json=get_yleague_json(), api='League')
+    league = League(json=get_yleague_json())
     if not kwargs:
         return league
     api_json = {}
@@ -96,6 +97,8 @@ def get(**kwargs):
         xml = YAPI.send_get(uri=raw_uri)
         api_json = xml_to_json(xml.text, api, nest_map=kwargs.get('nest_map'))
     if kwargs.get('team'):
+        # team and league are not really subject to change much
+        # we will update this json once a day and can explore live updates if needed
         team_id = kwargs.get('team')
         api_json = [t for t in league.teams if t['team_id'] == team_id][0]
     if kwargs.get('raw_data'):
@@ -139,24 +142,24 @@ class YResource(object):
     def keys(self):
         return self.json.keys()
 
+    def _check_season_started(self):
+        # Some league attributes are unavailable until the season begins
+        today = datetime.datetime.now().strftime('%Y-%m-%d')
+        if today < self.start_date:
+            return 'Unavailable until the season starts: %s' % self.start_date
+
 
 class League(YResource):
 
     @property
-    def league_id(self):
-        return self.data.get('league_id')
-
-    @property
-    def league_key(self):
-        return self.data.get('league_key')
-
-    @property
     def transactions(self):
+        self._check_season_started()
         uri = 'league/%s/transactions;type=trade' % self.league_key
         return get(raw_uri=uri, api='Transaction')
 
     @property
     def standings(self):
+        self._check_season_started()
         uri = 'league/%s/standings' % self.league_key
         return get(raw_uri=uri, raw_data=True, api='YResource')
 
