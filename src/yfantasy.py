@@ -32,7 +32,7 @@ def xml_to_json(xmltext, api, nest_map=''):
     if nest_map:
         for k in nest_map.split(','):
             content = content.get(k, {})
-    return content.get(api, {})
+    return content.get(api, content)
 
 
 def get_yleague_json(path=LEAGUE_JSON_PATH):
@@ -114,6 +114,22 @@ def get(**kwargs):
 # ------------------------------------------------- #
 
 
+# Exceptions
+
+class YahooResourceException(Exception):
+    pass
+
+
+class YahooResourceUnavailableException(YahooResourceException):
+    pass
+
+
+class YahooResourceNotFoundException(YahooResourceException):
+    pass
+
+
+# API Client Resources
+
 class YResource(object):
     """
     YResource base class.
@@ -153,29 +169,45 @@ class YResource(object):
 class League(YResource):
 
     @property
-    def transactions(self):
-        self._check_season_started()
-        uri = 'league/%s/transactions;type=trade' % self.league_key
-        return get(raw_uri=uri, api='Transaction')
+    def uri_prefix(self):
+        return self.__class__.__name__.lower() + '/' + self.league_key
+
+    @property
+    def trades(self):
+        uri = self.uri_prefix + '/transactions;type=trade'
+        return get(raw_uri=uri, raw_data=True)
 
     @property
     def standings(self):
-        self._check_season_started()
         uri = 'league/%s/standings' % self.league_key
-        return get(raw_uri=uri, raw_data=True, api='YResource')
+        return get(raw_uri=uri, raw_data=True)
+
+    @property
+    def _teams(self):
+        teams = []
+        for team in self.teams:
+            team_obj = Team(json=team)
+            team_obj.league = self
+            teams.append(team_obj)
+        return teams
 
 
 class Team(YResource):
 
     @property
+    def uri_prefix(self):
+        return self.__class__.__name__.lower() + '/' + self.team_key
+
+    @property
     def roster(self):
-        uri = 'team/%s/roster/players' % self.team_key
-        return get(raw_uri=uri, nest_map='team', api='Roster')
+        uri = self.uri_prefix + '/roster/players'
+        return get(raw_uri=uri, nest_map='team')
 
-
-class Roster(YResource):
-    pass
-
-
-class Transaction(YResource):
-    pass
+    def matchups(self, weeks=[]):
+        for week in weeks:
+            if not 1 <= week <= int(self.league.end_week):
+                e = 'Matchup weeks must be between 1 and %s! (%d)'
+                raise YahooResourceUnavailableException(e % (self.end_week, week))
+        _weeks = ','.join([str(w) for w in weeks])
+        uri = self.uri_prefix + '/matchups;weeks=' + _weeks
+        return get(raw_uri=uri, raw_data=True)
