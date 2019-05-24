@@ -191,6 +191,13 @@ class League(YResource):
             teams.append(team_obj)
         return teams
 
+    def teams_by_email(self, email):
+        all_emails = []
+        for team in self._teams:
+            if email == team.json['managers']['manager']['email']:
+                return team
+            all_emails.append(team.json['managers']['manager']['email'])
+        print(email + ' not found in ' + str(all_emails))
 
 class Team(YResource):
 
