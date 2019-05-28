@@ -96,6 +96,8 @@ def get(**kwargs):
     if raw_uri:
         api = kwargs.get('api') or raw_uri.split('/')[0]
         xml = YAPI.send_get(uri=raw_uri)
+        if not xml:
+            raise YahooResourceNotFoundException('Resource at %s not found' % raw_uri)
         api_json = xml_to_json(xml.text, api, nest_map=kwargs.get('nest_map'))
     if kwargs.get('team'):
         # team and league are not really subject to change much
@@ -159,11 +161,11 @@ class YResource(object):
     def keys(self):
         return self.json.keys()
 
-    def _check_season_started(self):
-        # Some league attributes are unavailable until the season begins
-        today = datetime.datetime.now().strftime('%Y-%m-%d')
-        if today < self.start_date:
-            return 'Unavailable until the season starts: %s' % self.start_date
+    def _test_api(self, uri):
+        # Should not be used in production
+        if hasattr(self, 'uri_prefix'):
+            uri = self.uri_prefix + '/' + uri
+            return get(raw_uri=uri, raw_data=True)
 
 
 class League(YResource):
@@ -198,6 +200,7 @@ class League(YResource):
                 return team
             all_emails.append(team.json['managers']['manager']['email'])
         print(email + ' not found in ' + str(all_emails))
+
 
 class Team(YResource):
 
