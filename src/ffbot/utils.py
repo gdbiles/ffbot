@@ -2,6 +2,9 @@
 # Likely we do not want to clutter bot module with formatting operations
 # Each discord command should call into a function in this module
 
+import asyncio
+import datetime
+import discord
 import json
 import os
 import prettytable
@@ -97,7 +100,69 @@ def standings(sortkey=None):
     return '```' + str(table) + '```'
 
 
-# Want crons:
-# - weekly awards 6am Tues
+def week_in_review():
+    league = yfantasy.get()
+    scoreboard = league.scoreboard(max([int(league.current_week)-1, 1]))
+    tracker = {'stinkers': []}
+    for m in scoreboard['scoreboard']['matchups']['matchup']:
+        teams = [{'name': t['name'], 'points': t['team_points']['total']} for t in m['teams']['team']]
+        teams = sorted(teams, key=lambda i: i['points'])
+        winner, loser = teams
+        tracker.setdefault('worst week', loser)
+        if loser['points'] < tracker['worst week']['points']:
+            tracker['worst week'] = loser
+        tracker.setdefault('best week', winner)
+        if winner['points'] > tracker['best week']['points']:
+            tracker['best week'] = winner
+        tracker['stinkers'].extend([t for t in teams if float(t['points']) < 60.0])
+
+    sb = scoreboard['scoreboard']['matchups']['matchup'][0]
+    output = 'Week in Review: Week %s: %s to %s\n' % (sb['week'], sb['week_start'], sb['week_end'])
+    output += '\n'
+    output += '\N{CROWN} ' + tracker['best week']['name'] + ' ... ' + tracker['best week']['points'] + '\n'
+    output += '\n'
+    output += '\N{PILE OF POO} ' + tracker['worst week']['name'] + ' ... ' + tracker['worst week']['points'] + '\n'
+    output += '\n'
+
+    stinkers = [t for t in sorted(tracker['stinkers'], key=lambda i: i['points']) if t != tracker['worst week']]
+    if stinkers:
+        output += 'These teams also deserve shoutouts for indescribably poor showings:\n'
+        for team in stinkers:
+            output += f"{team['name']:<20}{team['points']:>10}" + '\n'
+
+    return '```' + output + '```'
+
+
+def waiver_monitor():
+    pass
+
+
+def trades_monitor():
+    pass
+
+#
+# Crons
+#
+
+
+# - weekly awards 6am Weds
+async def cron_week_in_review(bot):
+    league = yfantasy.get()
+    await bot.wait_until_ready()
+    channel = discord.utils.get(bot.get_all_channels(), name='general')
+    while not bot.is_closed():
+        time = datetime.datetime.now()
+        league_active = league.start_date <= time.strftime('%Y-%m-%d') <= league.end_date
+        if league_active and time.weekday() == 2 and time.hour == 0 and time.minute < 1:
+            await channel.send(week_in_review())
+        await asyncio.sleep(60)  # task runs every 60 seconds
+
+
 # - transaction check at 6am Tues
+async def cron_waiver_monitor(bot):
+    pass
+
+
 # - trades check every 30 min
+async def cron_trades_monitor(bot):
+    pass

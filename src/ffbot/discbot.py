@@ -20,7 +20,6 @@ bot = commands.Bot(command_prefix=prefix)
 @bot.event
 async def on_ready():
     print("Everything's all ready to go~")
-    # TODO add loops for: Tues transactions
 
 
 @bot.event
@@ -112,5 +111,9 @@ AUTHFILE = os.path.realpath(os.path.join(os.curdir, '..', '..', 'auth.json'))
 with open(AUTHFILE, 'r') as f:
     token = json.load(f)['discord']['token']
 assert token, 'Discord token not found!'
+
+crons = [item for item in dir(utils) if item.startswith('cron_')]
+for cron in crons:
+    bot.loop.create_task(getattr(utils, cron)(bot))
 
 bot.run(token)
