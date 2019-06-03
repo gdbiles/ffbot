@@ -1,5 +1,6 @@
 # Interface for Discord
 
+import croniter
 import discord
 import json
 import os
@@ -28,12 +29,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@bot.event
-async def on_reaction_add(reaction, user):
-    pass
-
-
-@bot.command()
+@bot.command(hidden=True)
 async def ping(ctx):
     '''
     This text will be shown in the help command
@@ -45,7 +41,7 @@ async def ping(ctx):
     await ctx.send(latency)
 
 
-@bot.command()
+@bot.command(hidden=True)
 async def echo(ctx, *, content: str):
     await ctx.send(content)
 
@@ -59,6 +55,9 @@ async def echo(ctx, *, content: str):
 
 @bot.command()
 async def prediction(ctx, *, content: str):
+    '''
+    Make a prediction
+    '''
     channel = discord.utils.get(ctx.guild.text_channels, name='predictions')
     await channel.send(ctx.author.mention + ': ' + '`' + content + '`')
 
@@ -66,22 +65,14 @@ async def prediction(ctx, *, content: str):
 @bot.command()
 async def mymatchup(ctx, *, content=''):
     '''
-    Show stats for your matchup for a given week(s) (defaults to current)
+    Show your matchup this week (or provide a week number)
     '''
     # Expect `content` contains either None or a list of ints (weeks)
     for item in utils.mymatchup(ctx, content=content):
         await ctx.send(item)
 
 
-@bot.command()
-async def matchups(ctx, *, content=''):
-    '''
-    Show all matchups for a given week (defaults to current)
-    '''
-    pass
-
-
-@bot.command()
+@bot.command(hidden=True)
 async def config(ctx, member: discord.Member, email: str):
     '''
     Wire up discord user to team mapping
@@ -97,12 +88,37 @@ async def config(ctx, member: discord.Member, email: str):
 
 
 @bot.command()
-async def standings(ctx, *, content=''):
+async def standings(ctx):
     '''
-    Current league standings (sortkey default is None)
+    Current league standings
     '''
     table = utils.standings()
     await ctx.send(table)
+
+
+@bot.command(hidden=True)
+async def test_cron(ctx, content):
+    '''
+    Test crons
+    '''
+    if not 'Supreme Leader' in str(ctx.message.author.roles):
+        print(ctx.message.author.roles)
+        await ctx.send("Hey. Stop that. You can't do that.")
+        return
+    await ctx.send(getattr(utils, content.strip('cron_'))())
+
+#
+# Define crons
+#
+
+# TODO figure out a better way to do this
+# 5 min
+bot.loop.create_task(utils.cron_waiver_monitor('*/5 * * * *', bot))
+bot.loop.create_task(utils.cron_trades_monitor('*/5 * * * *', bot))
+# Hourly
+bot.loop.create_task(utils.cron_update_league('0 * * * *', bot))
+# Some days
+bot.loop.create_task(utils.cron_week_in_review('0 * * * wed', bot))
 
 
 # Grab token from auth.json
@@ -112,8 +128,5 @@ with open(AUTHFILE, 'r') as f:
     token = json.load(f)['discord']['token']
 assert token, 'Discord token not found!'
 
-crons = [item for item in dir(utils) if item.startswith('cron_')]
-for cron in crons:
-    bot.loop.create_task(getattr(utils, cron)(bot))
 
 bot.run(token)

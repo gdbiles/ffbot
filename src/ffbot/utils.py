@@ -10,6 +10,8 @@ import os
 import prettytable
 import sys
 
+from croniter import croniter
+
 # Add src/ to syspath
 sys.path.append(os.path.realpath(os.path.join(os.curdir, '..')))
 try:
@@ -78,25 +80,21 @@ def mymatchup(ctx, content=''):
         yield output
 
 
-def matchups(ctx, content=''):
-    pass
-
-
-def standings(sortkey=None):
+def standings():
     league = yfantasy.get()
     table = prettytable.PrettyTable(border=False)
-    table.field_names = ['team', 'pts for', 'pts against', 'w', 'l']
+    table.field_names = ['team', 'record', 'pts for', 'pts against']
     table.add_row(['-'] * len(table.field_names))
     for team in league.standings['standings']['teams']['team']:
         standing = list()
         ts = team['team_standings']
         standing.append(team['name']),
+        standing.append(ts['outcome_totals']['wins'] + ' - ' + ts['outcome_totals']['losses'])
         standing.append(ts['points_for'])
         standing.append(ts['points_against'])
-        standing.append(ts['outcome_totals']['wins'])
-        standing.append(ts['outcome_totals']['losses'])
         table.add_row(standing)
     table.align = 'l'
+    table.sortby = 'record'
     return '```' + str(table) + '```'
 
 
@@ -119,10 +117,12 @@ def week_in_review():
     sb = scoreboard['scoreboard']['matchups']['matchup'][0]
     output = 'Week in Review: Week %s: %s to %s\n' % (sb['week'], sb['week_start'], sb['week_end'])
     output += '\n'
-    output += '\N{CROWN} ' + tracker['best week']['name'] + ' ... ' + tracker['best week']['points'] + '\n'
-    output += '\n'
-    output += '\N{PILE OF POO} ' + tracker['worst week']['name'] + ' ... ' + tracker['worst week']['points'] + '\n'
-    output += '\n'
+    output += '\N{CROWN} ' + f"{tracker['best week']['name']:<20}{tracker['best week']['points']:>10}"
+    output += ' \N{CROWN}'
+    output += '\n\n'
+    output += '\N{PILE OF POO} ' + f"{tracker['worst week']['name']:<20}{tracker['worst week']['points']:>10}"
+    output += ' \N{PILE OF POO}'
+    output += '\n\n'
 
     stinkers = [t for t in sorted(tracker['stinkers'], key=lambda i: i['points']) if t != tracker['worst week']]
     if stinkers:
@@ -133,11 +133,11 @@ def week_in_review():
     return '```' + output + '```'
 
 
-def waiver_monitor():
+def waiver_monitor(bot):
     pass
 
 
-def trades_monitor():
+def trades_monitor(bot):
     pass
 
 #
@@ -145,24 +145,48 @@ def trades_monitor():
 #
 
 
-# - weekly awards 6am Weds
-async def cron_week_in_review(bot):
-    league = yfantasy.get()
+class CronJob(object):
+    def __init__(self, cron):
+        self.cron = croniter(cron, self.now)
+
+    @property
+    def now(self):
+        return datetime.datetime.now()
+
+    @property
+    def time_to_next(self):
+        diff = self.cron.next(datetime.datetime) - self.now
+        return diff.seconds
+
+
+# Weekly review 6am Weds
+async def cron_week_in_review(cron, bot):
     await bot.wait_until_ready()
+    league = yfantasy.get()
     channel = discord.utils.get(bot.get_all_channels(), name='general')
+    cron_obj = CronJob(cron)
+    while not bot.is_closed():
+        if league.start_date <= cron_obj.now.strftime('%Y-%m-%d') <= league.end_date:
+            await channel.send(week_in_review())
+        await asyncio.sleep(cron_obj.time_to_next)
+
+
+# Grab new waiver claims each morning
+async def cron_waiver_monitor(cron, bot):
+    pass
+
+
+# Check for new trades every 15 min
+async def cron_trades_monitor(cron, bot):
+    pass
+
+
+# Update league every night at midnight
+async def cron_update_league(cron, bot):
+    await bot.wait_until_ready()
+    cron_obj = CronJob(cron)
     while not bot.is_closed():
         time = datetime.datetime.now()
-        league_active = league.start_date <= time.strftime('%Y-%m-%d') <= league.end_date
-        if league_active and time.weekday() == 2 and time.hour == 0 and time.minute < 1:
-            await channel.send(week_in_review())
-        await asyncio.sleep(60)  # task runs every 60 seconds
-
-
-# - transaction check at 6am Tues
-async def cron_waiver_monitor(bot):
-    pass
-
-
-# - trades check every 30 min
-async def cron_trades_monitor(bot):
-    pass
+        if time.hour == time.minute == 0:
+            yfantasy.create_yleague_json(update=True)
+        await asyncio.sleep(cron_obj.time_to_next)
