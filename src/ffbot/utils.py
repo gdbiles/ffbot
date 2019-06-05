@@ -132,6 +132,15 @@ def week_in_review():
     return '```' + output + '```'
 
 
+def update_league(bot):
+    league = yfantasy.get()
+    yfantasy.create_yleague_json(update=True)
+    for disc_id, email in get_mgr_json().items():
+        team_name = league.teams_by_email(email).name
+        user = discord.utils.get(bot.get_all_members(), id=disc_id)
+        bot.change_nickname(user, team_name)
+
+
 def waiver_monitor(bot):
     pass
 
@@ -185,7 +194,5 @@ async def cron_update_league(cron, bot):
     await bot.wait_until_ready()
     cron_obj = CronJob(cron)
     while not bot.is_closed():
-        time = datetime.datetime.now()
-        if time.hour == time.minute == 0:
-            yfantasy.create_yleague_json(update=True)
+        update_league(bot)
         await asyncio.sleep(cron_obj.time_to_next)
