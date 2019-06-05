@@ -29,11 +29,10 @@ MGR_MAP = 'discmap.json'
 
 
 def get_mgr_json():
-    with open(MGR_MAP, 'r') as f:
-        try:
+    mgr_config = {}
+    if MGR_MAP in os.listdir('.'):
+        with open(MGR_MAP, 'r') as f:
             mgr_config = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            mgr_config = {}
     return mgr_config
 
 
