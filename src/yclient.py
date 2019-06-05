@@ -21,7 +21,6 @@ from oauthlib.common import urldecode
 logger = logging.getLogger(__name__)
 AUTHFILE = os.path.abspath(os.path.join(os.path.realpath(__file__), '..', '..', 'auth.json'))
 
-
 def load_auth(t=None):
     with open(AUTHFILE, 'r') as f:
         auth = json.load(f)
@@ -58,6 +57,7 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
         auth = (self.auth_cfg['client_id'], self.auth_cfg['client_secret'])
         refresh_kwargs = {
             'client_id': self.auth_cfg['client_id'],
+            'client_secret': self.auth_cfg['client_secret'],
             'redirect_uri': 'oob',
         }
 
@@ -103,8 +103,12 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
             json.dump(auth, f, indent=4, separators=(',', ': '))
         self.logger.info('New token updated in auth')
 
+    def test_refresh(self):
+        import time
+        self.token['expires_at'] = time.time() - 100
+
     def generate_new_auth_code(self):
-        """Generate new auth token via code entry
+        """Generate new auth token via code entry (REQUIRES GUI browser)
 
         :return:
         """
@@ -143,6 +147,7 @@ class YahooAPIBase(requests_oauthlib.OAuth2Session):
         if not oauthlib.oauth2.is_secure_transport(token_url):
             raise InsecureTransportError()
 
+        print('DOING AUTOREFRESH')
         refresh_token = refresh_token or self.token.get("refresh_token")
 
         self.logger.debug(
@@ -188,7 +193,6 @@ class YahooAPIClient(YahooAPIBase):
         assert base_url.endswith('/')
         assert base_url.startswith('https')
         self.base_url = base_url
-        super(YahooAPIClient, self).__init__()
 
     def send_get(self, uri):
         url = self.base_url + uri
@@ -201,6 +205,8 @@ class YahooAPIClient(YahooAPIBase):
     def __send_request(self, url, data=None, method=''):
         # current Yahoo app is auth'd for readonly, though we may
         # want to support POST going forward
+        # TODO get oauthlib auto-refresh working
+        super(YahooAPIClient, self).__init__()
         if method == 'GET':
             try:
                 r = self.request(url=url, method=method)
