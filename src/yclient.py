@@ -13,6 +13,7 @@ import logging
 import os
 import oauthlib
 import requests_oauthlib
+import time
 import webbrowser
 
 from oauthlib.common import urldecode
@@ -193,6 +194,7 @@ class YahooAPIClient(YahooAPIBase):
         assert base_url.endswith('/')
         assert base_url.startswith('https')
         self.base_url = base_url
+        super(YahooAPIClient, self).__init__()
 
     def send_get(self, uri):
         url = self.base_url + uri
@@ -206,7 +208,8 @@ class YahooAPIClient(YahooAPIBase):
         # current Yahoo app is auth'd for readonly, though we may
         # want to support POST going forward
         # TODO get oauthlib auto-refresh working
-        super(YahooAPIClient, self).__init__()
+        if self.token['expires_at'] <= time.time():
+            self.__init__()
         if method == 'GET':
             try:
                 r = self.request(url=url, method=method)
