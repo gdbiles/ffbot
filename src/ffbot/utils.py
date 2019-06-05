@@ -32,7 +32,7 @@ def get_mgr_json():
     with open(MGR_MAP, 'r') as f:
         try:
             mgr_config = json.load(f)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, FileNotFoundError):
             mgr_config = {}
     return mgr_config
 
