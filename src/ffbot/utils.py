@@ -37,7 +37,7 @@ def get_mgr_json():
     return mgr_config
 
 
-def set_user_team(discord_id, manager_email):
+async def set_user_team(bot, discord_id, manager_email):
     mgr_config = get_mgr_json()
     mgr_config.update({str(discord_id): manager_email})
     with open(MGR_MAP, 'w') as f:
@@ -45,6 +45,7 @@ def set_user_team(discord_id, manager_email):
     output = '```\n'
     output += json.dumps(mgr_config, indent=4, separators=(',', ': '))
     output += '```'
+    await update_league(bot)
     return output
 
 

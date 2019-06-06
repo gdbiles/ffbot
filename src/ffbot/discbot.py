@@ -73,17 +73,12 @@ async def mymatchup(ctx, *, content=''):
 
 
 @bot.command(hidden=True)
+@commands.has_role("Admin")
 async def config(ctx, member: discord.Member, email: str):
     '''
     Wire up discord user to team mapping
     '''
-    if not 'Supreme Leader' in str(ctx.message.author.roles):
-        print(ctx.message.author.roles)
-        await ctx.send("Hey. Stop that. You can't do that.")
-        return
-    if not ctx.message.channel.name == 'config':
-        await ctx.send("Wrong channel bucko.")
-    updated = utils.set_user_team(member.id, email)
+    updated = await utils.set_user_team(bot, member.id, email)
     await ctx.send(updated)
 
 
