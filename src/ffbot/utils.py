@@ -7,8 +7,7 @@ import datetime
 import discord
 import json
 import os
-import requests
-import shutil
+import prettytable
 import sys
 
 from croniter import croniter
