@@ -7,7 +7,8 @@ import datetime
 import discord
 import json
 import os
-import prettytable
+import requests
+import shutil
 import sys
 
 from croniter import croniter
@@ -132,13 +133,22 @@ def week_in_review():
     return '```' + output + '```'
 
 
-def update_league(bot):
+async def update_league(bot):
     league = yfantasy.get()
-    yfantasy.create_yleague_json(update=True)
+    yfantasy.create_yleague_json(int(league.league_id), update=True)
     for disc_id, email in get_mgr_json().items():
-        team_name = league.teams_by_email(email).name
-        user = discord.utils.get(bot.get_all_members(), id=disc_id)
-        bot.change_nickname(user, team_name)
+        team = league.teams_by_email(email)
+        user = discord.utils.get(bot.get_all_members(), id=int(disc_id))
+        # Set division role
+        division_roles = ['Acorn League East', 'Darby League West']
+        role_name = division_roles[int(team.division_id) - 1]
+        role = discord.utils.get(user.guild.roles, name=role_name)
+        for old_role in user.roles:
+            if old_role.name in division_roles:
+                await user.remove_roles(old_role)
+        await user.add_roles(role)
+        # Set team nickname
+        await user.edit(nick=team.name)
 
 
 def waiver_monitor(bot):
@@ -194,5 +204,5 @@ async def cron_update_league(cron, bot):
     await bot.wait_until_ready()
     cron_obj = CronJob(cron)
     while not bot.is_closed():
-        update_league(bot)
+        await update_league(bot)
         await asyncio.sleep(cron_obj.time_to_next)
