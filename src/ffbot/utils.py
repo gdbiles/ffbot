@@ -186,6 +186,7 @@ async def cron_week_in_review(cron, bot):
     while not bot.is_closed():
         if league.start_date <= cron_obj.now.strftime('%Y-%m-%d') <= league.end_date:
             await channel.send(week_in_review())
+        print('    UPDATED: cron_week_in_review')
         await asyncio.sleep(cron_obj.time_to_next)
 
 
@@ -205,4 +206,5 @@ async def cron_update_league(cron, bot):
     cron_obj = CronJob(cron)
     while not bot.is_closed():
         await update_league(bot)
+        print('    UPDATED: cron_update_league')
         await asyncio.sleep(cron_obj.time_to_next)
