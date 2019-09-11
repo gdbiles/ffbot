@@ -103,16 +103,15 @@ def week_in_review():
     scoreboard = league.scoreboard(max([int(league.current_week)-1, 1]))
     tracker = {'stinkers': []}
     for m in scoreboard['scoreboard']['matchups']['matchup']:
-        teams = [{'name': t['name'], 'points': t['team_points']['total']} for t in m['teams']['team']]
-        teams = sorted(teams, key=lambda i: i['points'])
-        winner, loser = teams
+        teams = [{'name': t['name'], 'points': float(t['team_points']['total'])} for t in m['teams']['team']]
+        loser, winner = sorted(teams, key=lambda i: i['points'])
         tracker.setdefault('worst week', loser)
         if loser['points'] < tracker['worst week']['points']:
             tracker['worst week'] = loser
         tracker.setdefault('best week', winner)
         if winner['points'] > tracker['best week']['points']:
             tracker['best week'] = winner
-        tracker['stinkers'].extend([t for t in teams if float(t['points']) < 60.0])
+        tracker['stinkers'].extend([t for t in teams if float(t['points']) < 60.0 and t != tracker['worst week']])
 
     sb = scoreboard['scoreboard']['matchups']['matchup'][0]
     output = 'Week in Review: Week %s: %s to %s\n' % (sb['week'], sb['week_start'], sb['week_end'])

@@ -113,7 +113,7 @@ bot.loop.create_task(utils.cron_trades_monitor('*/5 * * * *', bot))
 # Hourly
 bot.loop.create_task(utils.cron_update_league('0 * * * *', bot))
 # Some days
-bot.loop.create_task(utils.cron_week_in_review('0 * * * wed', bot))
+bot.loop.create_task(utils.cron_week_in_review('0 15 * * 3', bot))
 
 
 # Grab token from auth.json

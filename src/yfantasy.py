@@ -185,7 +185,7 @@ class League(YResource):
         return get(raw_uri=uri, raw_data=True)
 
     def scoreboard(self, week):
-        uri = self.uri_prefix + '/scoreboard;weeks=%s' % str(week)
+        uri = self.uri_prefix + '/scoreboard;week=%s' % str(week)
         return get(raw_uri=uri, raw_data=True)
 
     @property
